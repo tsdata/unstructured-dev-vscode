@@ -1,16 +1,16 @@
-# 기본 이미지 설정
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:22.04
 
 # 환경 변수 설정
-ENV PYTHON=python3.11 \
-    PIP="python3.11 -m pip" \
-    DEBIAN_FRONTEND=noninteractive \
-    TESSDATA_PREFIX=/usr/local/share/tessdata \
-    NLTK_DATA=/home/notebook-user/nltk_data \
-    PATH="/home/notebook-user/.local/bin:${PATH}"
+ENV PYTHON=python3.11
+ENV PIP=pip3
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NLTK_DATA=/home/notebook-user/nltk_data
 
-# 시스템 패키지 설치 (단일 레이어로 통합)
+# 기본 패키지 설치
 RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
     ${PYTHON} \
     ${PYTHON}-dev \
     python3-pip \
@@ -25,11 +25,14 @@ RUN apt-get update && apt-get install -y \
     libtesseract-dev \
     fonts-ubuntu \
     fontconfig \
-    pi-heif \ 
-    pdf2image \ 
     && fc-cache -fv \
     && rm -rf /var/lib/apt/lists/* \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 2
+
+# pip 패키지 설치
+RUN python3 -m pip install --no-cache-dir \
+    pillow-heif \
+    pdf2image
 
 # Requirements 설정 및 Python 패키지 설치
 WORKDIR /tmp
@@ -50,12 +53,12 @@ USER notebook-user
 RUN ${PIP} install --no-cache-dir --user \
     pytest \
     nltk \
-    unstructured \
+    "unstructured[all]" \
     unstructured-inference \
     && rm -rf /tmp/* ~/.cache/pip \
     && mkdir -p ${NLTK_DATA} \
-    && ${PYTHON} -m nltk.downloader -d ${NLTK_DATA} punkt averaged_perceptron_tagger \
-    && ${PYTHON} -c "from unstructured.partition.model_init import initialize; initialize()" \
-    && ${PYTHON} -c "from unstructured_inference.models.tables import UnstructuredTableTransformerModel; model = UnstructuredTableTransformerModel(); model.initialize('microsoft/table-transformer-structure-recognition')"
+    && python3 -m nltk.downloader -d ${NLTK_DATA} punkt averaged_perceptron_tagger \
+    && python3 -c "from unstructured.partition.model_init import initialize; initialize()" \
+    && python3 -c "from unstructured_inference.models.tables import UnstructuredTableTransformerModel; model = UnstructuredTableTransformerModel(); model.initialize('microsoft/table-transformer-structure-recognition')"
 
 CMD ["/bin/bash"]
