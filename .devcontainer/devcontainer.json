@@ -1,0 +1,15 @@
+{
+    "name": "Unstructured Development",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "unstructured-dev",
+    "workspaceFolder": "/workspace/unstructured",
+    "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true
+    },
+    "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+    ]
+}

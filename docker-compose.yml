@@ -1,0 +1,11 @@
+services:
+  unstructured-dev:
+    build: .
+    volumes:
+      - ../:/workspace
+      - ~/.gitconfig:/home/notebook-user/.gitconfig
+    ports:
+      - "8000:8000"
+    command: /bin/bash
+    tty: true
+    stdin_open: true
