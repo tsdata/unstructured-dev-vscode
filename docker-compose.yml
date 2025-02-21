@@ -2,7 +2,7 @@ services:
   unstructured-dev:
     build:
       context: ..
-      dockerfile: unstructured/Dockerfile
+      dockerfile: unstructured-dev-vscode/Dockerfile
     volumes:
       - ../:/workspace
     ports:
