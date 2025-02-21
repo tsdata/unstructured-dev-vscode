@@ -1,9 +1,10 @@
 services:
   unstructured-dev:
-    build: .
+    build:
+      context: ..
+      dockerfile: unstructured/Dockerfile
     volumes:
       - ../:/workspace
-      - ~/.gitconfig:/home/notebook-user/.gitconfig
     ports:
       - "8000:8000"
     command: /bin/bash

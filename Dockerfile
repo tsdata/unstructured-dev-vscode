@@ -1,64 +1,77 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS builder
 
-# 환경 변수 설정
-ENV PYTHON=python3.11
-ENV PIP=pip3
-ENV DEBIAN_FRONTEND=noninteractive
-ENV NLTK_DATA=/home/notebook-user/nltk_data
+ENV DEBIAN_FRONTEND=noninteractive \
+    NLTK_DATA=/home/notebook-user/nltk_data \
+    PYTHON=python3.10 \
+    VENV_PATH=/home/notebook-user/venv \
+    TESSDATA_PREFIX=/usr/local/share/tessdata
+ENV PATH="$VENV_PATH/bin:$PATH"
 
-# 기본 패키지 설치
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y \
-    ${PYTHON} \
-    ${PYTHON}-dev \
-    python3-pip \
-    git \
-    openssh-server \
-    build-essential \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-eng \
-    libtesseract-dev \
-    fonts-ubuntu \
-    fontconfig \
-    && fc-cache -fv \
-    && rm -rf /var/lib/apt/lists/* \
-    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 2
-
-# pip 패키지 설치
-RUN python3 -m pip install --no-cache-dir \
-    pillow-heif \
-    pdf2image
-
-# Requirements 설정 및 Python 패키지 설치
-WORKDIR /tmp
-RUN git clone --depth 1 https://github.com/Unstructured-IO/unstructured.git && \
-    mv unstructured/requirements /requirements && \
-    rm -rf unstructured
-
-# 사용자 설정
 RUN useradd -ms /bin/bash notebook-user && \
     mkdir -p /workspace && \
     chown -R notebook-user:notebook-user /workspace
 
-# 작업 디렉토리 및 사용자 전환
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    python3.10-venv \
+    git \
+    build-essential \
+    libmagic-dev \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-kor \
+    libreoffice \
+    pandoc \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libtesseract-dev \
+    fonts-ubuntu \
+    fontconfig \
+    libheif1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN fc-cache -fv
+
+RUN if [ ! -f /usr/local/share/tessdata/eng.traineddata ]; then \
+        if [ -f /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata ]; then \
+            echo "Copying eng.traineddata to /usr/local/share/tessdata" && \
+            mkdir -p /usr/local/share/tessdata && \
+            cp /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata /usr/local/share/tessdata/; \
+        else \
+            echo "Warning: eng.traineddata not found in expected locations." && \
+            echo "Please ensure tesseract-ocr-eng is installed correctly."; \
+        fi; \
+    fi; \
+    if [ ! -f /usr/local/share/tessdata/kor.traineddata ]; then \
+        if [ -f /usr/share/tesseract-ocr/4.00/tessdata/kor.traineddata ]; then \
+            echo "Copying kor.traineddata to /usr/local/share/tessdata" && \
+            mkdir -p /usr/local/share/tessdata && \
+            cp /usr/share/tesseract-ocr/4.00/tessdata/kor.traineddata /usr/local/share/tessdata/; \
+        else \
+            echo "Warning: kor.traineddata not found. If Korean OCR is not needed, this can be ignored." && \
+            echo "Otherwise, please ensure tesseract-ocr-kor is installed correctly.";\
+        fi; \
+    fi
+
 WORKDIR /workspace
 USER notebook-user
 
-# Python 패키지 설치 및 초기화
-RUN ${PIP} install --no-cache-dir --user \
-    pytest \
-    nltk \
+RUN python3.10 -m venv $VENV_PATH
+
+RUN pip install --no-cache-dir \
     "unstructured[all]" \
-    unstructured-inference \
-    && rm -rf /tmp/* ~/.cache/pip \
-    && mkdir -p ${NLTK_DATA} \
-    && python3 -m nltk.downloader -d ${NLTK_DATA} punkt averaged_perceptron_tagger \
-    && python3 -c "from unstructured.partition.model_init import initialize; initialize()" \
-    && python3 -c "from unstructured_inference.models.tables import UnstructuredTableTransformerModel; model = UnstructuredTableTransformerModel(); model.initialize('microsoft/table-transformer-structure-recognition')"
+    unstructured-inference
+
+RUN git clone --depth 1 https://github.com/Unstructured-IO/unstructured.git /tmp/unstructured && \
+    mv /tmp/unstructured/requirements /workspace/requirements && \
+    rm -rf /tmp/unstructured
+
+RUN find requirements/ -type f -name "*.txt" -exec pip install --no-cache-dir -r '{}' ';' && \
+    mkdir -p ${NLTK_DATA} && \
+    python3 -m nltk.downloader -d ${NLTK_DATA} punkt averaged_perceptron_tagger
 
 CMD ["/bin/bash"]
