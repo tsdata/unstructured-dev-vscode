@@ -19,7 +19,7 @@
 1.  저장소 클론:
 
     ```bash
-    git clone git@github.com:tsdata/unstructured-dev-vscode.git
+    git clone https://github.com/tsdata/unstructured-dev-vscode.git
     cd unstructured-dev-vscode
     ```
 
