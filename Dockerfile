@@ -11,6 +11,10 @@ RUN useradd -ms /bin/bash notebook-user && \
     mkdir -p /workspace && \
     chown -R notebook-user:notebook-user /workspace
 
+# Copy requirements.txt before changing user and workdir
+COPY requirements.txt /workspace/
+RUN chown notebook-user:notebook-user /workspace/requirements.txt
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     python3.10 \
@@ -61,10 +65,6 @@ WORKDIR /workspace
 USER notebook-user
 
 RUN python3.10 -m venv $VENV_PATH
-
-# Copy requirements.txt before changing user
-COPY requirements.txt /workspace/
-RUN chown notebook-user:notebook-user /workspace/requirements.txt
 
 # unstructured 관련 requirements 파일 가져오기
 RUN git clone --depth 1 https://github.com/Unstructured-IO/unstructured.git /tmp/unstructured && \
