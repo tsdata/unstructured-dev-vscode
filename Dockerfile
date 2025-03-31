@@ -62,8 +62,9 @@ USER notebook-user
 
 RUN python3.10 -m venv $VENV_PATH
 
-# requirements.txt 파일을 작업 디렉토리로 복사
-COPY --chown=notebook-user:notebook-user requirements.txt .
+# Copy requirements.txt before changing user
+COPY requirements.txt /workspace/
+RUN chown notebook-user:notebook-user /workspace/requirements.txt
 
 # unstructured 관련 requirements 파일 가져오기
 RUN git clone --depth 1 https://github.com/Unstructured-IO/unstructured.git /tmp/unstructured && \
@@ -72,7 +73,7 @@ RUN git clone --depth 1 https://github.com/Unstructured-IO/unstructured.git /tmp
     find unstructured_requirements/ -type f -name "*.txt" -exec cat '{}' ';' > /tmp/unstructured_combined.txt
 
 # requirements 파일 병합 및 중복 제거
-RUN sort -u requirements.txt /tmp/unstructured_combined.txt > /tmp/final_requirements.txt && \
+RUN sort -u /workspace/requirements.txt /tmp/unstructured_combined.txt > /tmp/final_requirements.txt && \
     echo "onnxruntime==1.19.2" >> /tmp/final_requirements.txt
 
 # 모든 패키지 설치
