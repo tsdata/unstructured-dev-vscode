@@ -62,16 +62,26 @@ USER notebook-user
 
 RUN python3.10 -m venv $VENV_PATH
 
-RUN pip install --no-cache-dir \
-    "unstructured[all]" \
-    unstructured-inference
+# requirements.txt 파일을 작업 디렉토리로 복사
+COPY --chown=notebook-user:notebook-user requirements.txt .
 
+# unstructured 관련 requirements 파일 가져오기
 RUN git clone --depth 1 https://github.com/Unstructured-IO/unstructured.git /tmp/unstructured && \
-    mv /tmp/unstructured/requirements /workspace/requirements && \
-    rm -rf /tmp/unstructured
+    mv /tmp/unstructured/requirements /workspace/unstructured_requirements && \
+    rm -rf /tmp/unstructured && \
+    find unstructured_requirements/ -type f -name "*.txt" -exec cat '{}' ';' > /tmp/unstructured_combined.txt
 
-RUN find requirements/ -type f -name "*.txt" -exec pip install --no-cache-dir -r '{}' ';' && \
-    mkdir -p ${NLTK_DATA} && \
+# requirements 파일 병합 및 중복 제거
+RUN sort -u requirements.txt /tmp/unstructured_combined.txt > /tmp/final_requirements.txt && \
+    echo "onnxruntime==1.19.2" >> /tmp/final_requirements.txt
+
+# 모든 패키지 설치
+RUN pip install --no-cache-dir -r /tmp/final_requirements.txt && \
+    pip install --no-cache-dir "unstructured[all]" unstructured-inference && \
+    rm -rf /tmp/unstructured_combined.txt /tmp/final_requirements.txt unstructured_requirements/
+
+# NLTK 데이터 다운로드
+RUN mkdir -p ${NLTK_DATA} && \
     python3 -m nltk.downloader -d ${NLTK_DATA} punkt averaged_perceptron_tagger
 
 CMD ["/bin/bash"]
